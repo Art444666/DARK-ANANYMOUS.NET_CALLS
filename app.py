@@ -4,7 +4,7 @@ import socketio
 
 # Flask + Socket.IO
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'supersecret'
+app.config['SECRET_KEY'] = '34jh5g34j5hg34kjh5g34kjh534kjh53kjh4g53j4h5g5uyg6f6hj7gf756jh7gf56j7hg45lk65jgh34mn45v3m4nbh5v3546kjhg456jkhg4356kjh45fv6fy67d'
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
