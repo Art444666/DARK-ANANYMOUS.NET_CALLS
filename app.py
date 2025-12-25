@@ -1,18 +1,24 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, send_file
 from flask_session import Session
 import socketio
+import os
 
-# Flask + Socket.IO
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '34jh5g34j5hg34kjh5g34kjh534kjh53kjh4g53j4h5g5uyg6f6hj7gf756jh7gf56j7hg45lk65jgh34mn45v3m4nbh5v3546kjhg456jkhg4356kjh45fv6fy67d'
+app.config['SECRET_KEY'] = '435lkhj345jk56h345okuij65h4l5iu6h45iou6h45ilkuj6h45lkhj6gh45kjh6gjhm45g6dchg456fdh56gfd56ghf7d56hg7fd'
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
-sio = socketio.Server(cors_allowed_origins="*")
+# Socket.IO сервер
+sio = socketio.Server(cors_allowed_origins="*", async_mode="threading")
 app.wsgi_app = socketio.WSGIApp(sio, app.wsgi_app)
 
 # Простая база пользователей
 users = {}  # {username: {"password": "...", "allow_calls": True}}
+
+# === Отдаём index.html напрямую ===
+@app.route("/")
+def index():
+    return send_file("index.html")
 
 # Регистрация
 @app.route("/register", methods=["POST"])
@@ -58,7 +64,7 @@ def toggle_calls():
     users[user]["allow_calls"] = not users[user]["allow_calls"]
     return jsonify({"allow_calls": users[user]["allow_calls"]})
 
-# Socket.IO события для звонков
+# === Socket.IO события ===
 @sio.event
 def connect(sid, environ):
     print("Client connected:", sid)
@@ -78,5 +84,4 @@ def call(sid, data):
         sio.emit("call_blocked", {"to": target}, to=sid)
 
 if __name__ == "__main__":
-    import eventlet
-    eventlet.wsgi.server(eventlet.listen(("0.0.0.0", 5000)), app)
+    app.run(host="0.0.0.0", port=5000)
