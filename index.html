@@ -1,33 +1,144 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>📞 Звонки</title>
+  <title>📞 DARK Anonymous Calls</title>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #0d1117, #1a1f2b);
+      color: #e6edf3;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      width: 100%;
+      padding: 20px;
+      text-align: center;
+      background: linear-gradient(135deg, #111827, #1f2937);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #58a6ff;
+      text-shadow: 0 0 12px rgba(88,166,255,0.8);
+    }
+    .card {
+      background: rgba(22,27,34,0.9);
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.8);
+    }
+    input, button {
+      margin: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #e6edf3;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    input:focus {
+      border-color: #58a6ff;
+      box-shadow: 0 0 8px rgba(88,166,255,0.6);
+      outline: none;
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, #238636, #2ea043);
+      border: none;
+      font-weight: bold;
+      color: #fff;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 12px rgba(46,160,67,0.6);
+    }
+    video {
+      width: 45%;
+      margin: 10px;
+      border-radius: 12px;
+      border: 2px solid #30363d;
+      background: #000;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    ul { list-style: none; padding: 0; }
+    li {
+      padding: 8px;
+      margin: 4px 0;
+      background: linear-gradient(135deg, #21262d, #161b22);
+      border-radius: 8px;
+      transition: transform 0.2s ease;
+      cursor: pointer;
+    }
+    li:hover { transform: translateX(5px); background: #2d333b; }
+  </style>
 </head>
 <body>
-  <h2>📞 Сайт звонков</h2>
+  <header>
+    <h1>💬 DARK Anonymous Calls</h1>
+  </header>
 
   <!-- Регистрация / Вход -->
-  <input id="username" placeholder="Ник">
-  <input id="password" type="password" placeholder="Пароль">
-  <button onclick="register()">Регистрация</button>
-  <button onclick="login()">Вход</button>
+  <div class="card">
+    <h3>🔑 Регистрация / Вход</h3>
+    <input id="username" placeholder="Ник">
+    <input id="password" type="password" placeholder="Пароль">
+    <button onclick="register()">Регистрация</button>
+    <button onclick="login()">Вход</button>
+  </div>
 
   <!-- Поиск пользователей -->
-  <input id="search" placeholder="Поиск по нику">
-  <button onclick="searchUser()">Найти</button>
-  <ul id="results"></ul>
+  <div class="card">
+    <h3>🔍 Поиск пользователей</h3>
+    <input id="search" placeholder="Введите ник или буквы">
+    <button onclick="searchUser()">Найти</button>
+    <ul id="results"></ul>
+  </div>
 
-  <!-- Контейнеры для звонков -->
-  <button id="callAudio">🔊 Аудио-звонок</button>
-  <button id="callVideo">🎥 Видео-звонок</button>
-  <video id="localVideo" autoplay muted></video>
-  <video id="remoteVideo" autoplay></video>
+  <!-- Сообщения -->
+  <div class="card">
+    <h3>💬 Сообщения</h3>
+    <input id="message" placeholder="Напишите сообщение">
+    <button onclick="sendMessage()">Отправить</button>
+    <ul id="chat"></ul>
+  </div>
+
+  <!-- Звонки -->
+  <div class="card">
+    <h3>📞 Звонки</h3>
+    <button id="callAudio">🔊 Аудио-звонок</button>
+    <button id="callVideo">🎥 Видео-звонок</button>
+    <button onclick="toggleCalls()">🚫 Блокировать звонки</button>
+  </div>
+
+  <!-- Видео контейнеры -->
+  <div class="card">
+    <h3>🎥 Видео</h3>
+    <video id="localVideo" autoplay muted></video>
+    <video id="remoteVideo" autoplay></video>
+  </div>
 
 <script>
-const socket = io("http://localhost:5000");
+const socket = io("http://localhost:5000"); // заменишь на Render URL
 const peer = new RTCPeerConnection();
+let currentTarget = null;
 
 async function register() {
   await fetch("/register", { method:"POST", headers:{'Content-Type':'application/json'},
@@ -43,7 +154,21 @@ async function searchUser() {
   const q = document.getElementById("search").value;
   const res = await fetch("/search?q=" + q);
   const list = await res.json();
-  document.getElementById("results").innerHTML = list.map(u => `<li>${u}</li>`).join("");
+  document.getElementById("results").innerHTML = list.map(u =>
+    `<li onclick="selectUser('${u}')">${u}</li>`).join("");
+}
+
+function selectUser(u) {
+  currentTarget = u;
+  alert("Вы выбрали: " + u);
+}
+
+function sendMessage() {
+  const msg = document.getElementById("message").value;
+  if(currentTarget) {
+    socket.emit("message", { to: currentTarget, text: msg });
+    document.getElementById("chat").innerHTML += `<li>Вы: ${msg}</li>`;
+  }
 }
 
 function startCall(video=false) {
@@ -51,20 +176,25 @@ function startCall(video=false) {
     .then(stream => {
       stream.getTracks().forEach(track => peer.addTrack(track, stream));
       if(video) document.getElementById("localVideo").srcObject = stream;
+      socket.emit("call", { from: "me", to: currentTarget });
     });
 }
 
 document.getElementById("callAudio").onclick = () => {
   startCall(false);
   navigator.vibrate([300,200,300]);
-  new Notification("📞 Входящий аудио-звонок", { body: "Нажмите, чтобы принять" });
 };
 
 document.getElementById("callVideo").onclick = () => {
   startCall(true);
   navigator.vibrate([500,200,500]);
-  new Notification("🎥 Входящий видео-звонок", { body: "Нажмите, чтобы принять" });
 };
+
+async function toggleCalls() {
+  const res = await fetch("/toggle_calls", { method:"POST" });
+  const data = await res.json();
+  alert("Приём звонков: " + data.allow_calls);
+}
 
 peer.ontrack = event => {
   document.getElementById("remoteVideo").srcObject = event.streams[0];
@@ -74,6 +204,10 @@ peer.onicecandidate = e => {
   if(e.candidate) socket.emit("candidate", e.candidate);
 };
 socket.on("candidate", c => peer.addIceCandidate(new RTCIceCandidate(c)));
+
+socket.on("incoming_call", data => {
+  new Notification("📞 Входящий звонок", { body: "От: " + data.from });
+});
 </script>
 </body>
 </html>
