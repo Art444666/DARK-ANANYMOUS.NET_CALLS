@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>📞 Звонки</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+  <h2>📞 Сайт звонков</h2>
+
+  <!-- Регистрация / Вход -->
+  <input id="username" placeholder="Ник">
+  <input id="password" type="password" placeholder="Пароль">
+  <button onclick="register()">Регистрация</button>
+  <button onclick="login()">Вход</button>
+
+  <!-- Поиск пользователей -->
+  <input id="search" placeholder="Поиск по нику">
+  <button onclick="searchUser()">Найти</button>
+  <ul id="results"></ul>
+
+  <!-- Контейнеры для звонков -->
+  <button id="callAudio">🔊 Аудио-звонок</button>
+  <button id="callVideo">🎥 Видео-звонок</button>
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video>
+
+<script>
+const socket = io("http://localhost:5000");
+const peer = new RTCPeerConnection();
+
+async function register() {
+  await fetch("/register", { method:"POST", headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ username: username.value, password: password.value }) });
+}
+
+async function login() {
+  await fetch("/login", { method:"POST", headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ username: username.value, password: password.value }) });
+}
+
+async function searchUser() {
+  const q = document.getElementById("search").value;
+  const res = await fetch("/search?q=" + q);
+  const list = await res.json();
+  document.getElementById("results").innerHTML = list.map(u => `<li>${u}</li>`).join("");
+}
+
+function startCall(video=false) {
+  navigator.mediaDevices.getUserMedia({ audio: true, video })
+    .then(stream => {
+      stream.getTracks().forEach(track => peer.addTrack(track, stream));
+      if(video) document.getElementById("localVideo").srcObject = stream;
+    });
+}
+
+document.getElementById("callAudio").onclick = () => {
+  startCall(false);
+  navigator.vibrate([300,200,300]);
+  new Notification("📞 Входящий аудио-звонок", { body: "Нажмите, чтобы принять" });
+};
+
+document.getElementById("callVideo").onclick = () => {
+  startCall(true);
+  navigator.vibrate([500,200,500]);
+  new Notification("🎥 Входящий видео-звонок", { body: "Нажмите, чтобы принять" });
+};
+
+peer.ontrack = event => {
+  document.getElementById("remoteVideo").srcObject = event.streams[0];
+};
+
+peer.onicecandidate = e => {
+  if(e.candidate) socket.emit("candidate", e.candidate);
+};
+socket.on("candidate", c => peer.addIceCandidate(new RTCIceCandidate(c)));
+</script>
+</body>
+</html>
